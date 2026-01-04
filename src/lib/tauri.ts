@@ -705,6 +705,14 @@ export interface CodexApiKey {
 	prefix?: string;
 }
 
+// Vertex API Key structure
+export interface VertexApiKey {
+	apiKey: string;
+	projectId?: string;
+	location?: string;
+	baseUrl?: string;
+}
+
 // OpenAI-Compatible Provider structure
 export interface OpenAICompatibleProvider {
 	name: string;
@@ -775,60 +783,23 @@ export async function deleteCodexApiKey(index: number): Promise<void> {
 }
 
 // ============================================
-// Thinking Budget Settings
+// Vertex API Keys
 // ============================================
 
-export interface ThinkingBudgetSettings {
-	mode: "low" | "medium" | "high" | "custom";
-	customBudget: number;
+export async function getVertexApiKeys(): Promise<VertexApiKey[]> {
+	return invoke("get_vertex_api_keys");
 }
 
-export async function getThinkingBudgetSettings(): Promise<ThinkingBudgetSettings> {
-	return invoke("get_thinking_budget_settings");
+export async function setVertexApiKeys(keys: VertexApiKey[]): Promise<void> {
+	return invoke("set_vertex_api_keys", { keys });
 }
 
-export async function setThinkingBudgetSettings(
-	settings: ThinkingBudgetSettings,
-): Promise<void> {
-	return invoke("set_thinking_budget_settings", { settings });
+export async function addVertexApiKey(key: VertexApiKey): Promise<void> {
+	return invoke("add_vertex_api_key", { key });
 }
 
-// Helper to get actual token count from settings
-export function getThinkingBudgetTokens(
-	settings: ThinkingBudgetSettings,
-): number {
-	switch (settings.mode) {
-		case "low":
-			return 2048;
-		case "medium":
-			return 8192;
-		case "high":
-			return 32768;
-		case "custom":
-			return settings.customBudget;
-		default:
-			return 8192;
-	}
-}
-
-// ============================================
-// Reasoning Effort Settings (GPT/Codex models)
-// ============================================
-
-export type ReasoningEffortLevel = "none" | "low" | "medium" | "high" | "xhigh";
-
-export interface ReasoningEffortSettings {
-	level: ReasoningEffortLevel;
-}
-
-export async function getReasoningEffortSettings(): Promise<ReasoningEffortSettings> {
-	return invoke("get_reasoning_effort_settings");
-}
-
-export async function setReasoningEffortSettings(
-	settings: ReasoningEffortSettings,
-): Promise<void> {
-	return invoke("set_reasoning_effort_settings", { settings });
+export async function deleteVertexApiKey(index: number): Promise<void> {
+	return invoke("delete_vertex_api_key", { index });
 }
 
 // ============================================

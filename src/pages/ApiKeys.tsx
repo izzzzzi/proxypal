@@ -5,6 +5,7 @@ import type {
 	CodexApiKey,
 	GeminiApiKey,
 	OpenAICompatibleProvider,
+	VertexApiKey,
 } from "../lib/tauri";
 import {
 	fetchOpenaiCompatibleModels,
@@ -12,17 +13,19 @@ import {
 	getCodexApiKeys,
 	getGeminiApiKeys,
 	getOpenAICompatibleProviders,
+	getVertexApiKeys,
 	reloadConfig,
 	setClaudeApiKeys,
 	setCodexApiKeys,
 	setGeminiApiKeys,
 	setOpenAICompatibleProviders,
+	setVertexApiKeys,
 	testOpenAIProvider,
 } from "../lib/tauri";
 import { appStore } from "../stores/app";
 import { toastStore } from "../stores/toast";
 
-type TabId = "gemini" | "claude" | "codex" | "openai-compatible";
+type TabId = "gemini" | "claude" | "codex" | "vertex" | "openai-compatible";
 
 interface Tab {
 	id: TabId;
@@ -34,6 +37,7 @@ const TABS: Tab[] = [
 	{ id: "gemini", label: "Gemini", icon: "/logos/gemini.svg" },
 	{ id: "claude", label: "Claude", icon: "/logos/claude.svg" },
 	{ id: "codex", label: "Codex", icon: "/logos/openai.svg" },
+	{ id: "vertex", label: "Vertex", icon: "/logos/gemini.svg" },
 	{ id: "openai-compatible", label: "OpenAI", icon: "/logos/openai.svg" },
 ];
 
@@ -46,6 +50,7 @@ export function ApiKeysPage() {
 	const [geminiKeys, setGeminiKeys] = createSignal<GeminiApiKey[]>([]);
 	const [claudeKeys, setClaudeKeys] = createSignal<ClaudeApiKey[]>([]);
 	const [codexKeys, setCodexKeys] = createSignal<CodexApiKey[]>([]);
+	const [vertexKeys, setVertexKeys] = createSignal<VertexApiKey[]>([]);
 	const [openaiProviders, setOpenaiProviders] = createSignal<
 		OpenAICompatibleProvider[]
 	>([]);
@@ -67,6 +72,12 @@ export function ApiKeysPage() {
 	});
 	const [newCodexKey, setNewCodexKey] = createSignal<CodexApiKey>({
 		apiKey: "",
+	});
+	const [newVertexKey, setNewVertexKey] = createSignal<VertexApiKey>({
+		apiKey: "",
+		projectId: undefined,
+		location: undefined,
+		baseUrl: undefined,
 	});
 	const [newOpenaiProvider, setNewOpenaiProvider] =
 		createSignal<OpenAICompatibleProvider>({
@@ -106,15 +117,17 @@ export function ApiKeysPage() {
 
 		setLoading(true);
 		try {
-			const [gemini, claude, codex, openai] = await Promise.all([
+			const [gemini, claude, codex, vertex, openai] = await Promise.all([
 				getGeminiApiKeys(),
 				getClaudeApiKeys(),
 				getCodexApiKeys(),
+				getVertexApiKeys(),
 				getOpenAICompatibleProviders(),
 			]);
 			setGeminiKeys(gemini);
 			setClaudeKeys(claude);
 			setCodexKeys(codex);
+			setVertexKeys(vertex);
 			setOpenaiProviders(openai);
 		} catch (error) {
 			console.error("Failed to load API keys:", error);
@@ -225,6 +238,47 @@ export function ApiKeysPage() {
 			await setCodexApiKeys(updated);
 			setCodexKeys(updated);
 			toastStore.success("Codex API key deleted");
+		} catch (error) {
+			toastStore.error("Failed to delete key", String(error));
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleAddVertexKey = async () => {
+		const key = newVertexKey();
+		if (!key.apiKey.trim()) {
+			toastStore.error("API key required");
+			return;
+		}
+
+		setLoading(true);
+		try {
+			const updated = [...vertexKeys(), key];
+			await setVertexApiKeys(updated);
+			setVertexKeys(updated);
+			setNewVertexKey({
+				apiKey: "",
+				projectId: undefined,
+				location: undefined,
+				baseUrl: undefined,
+			});
+			setShowAddForm(false);
+			toastStore.success("Vertex API key added");
+		} catch (error) {
+			toastStore.error("Failed to add key", String(error));
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleDeleteVertexKey = async (index: number) => {
+		setLoading(true);
+		try {
+			const updated = vertexKeys().filter((_, i) => i !== index);
+			await setVertexApiKeys(updated);
+			setVertexKeys(updated);
+			toastStore.success("Vertex API key deleted");
 		} catch (error) {
 			toastStore.error("Failed to delete key", String(error));
 		} finally {
@@ -1075,6 +1129,177 @@ export function ApiKeysPage() {
 						</div>
 					</Show>
 
+					{/* Vertex Tab */}
+					<Show when={activeTab() === "vertex"}>
+						<div class="space-y-4">
+							<p class="text-xs text-gray-500 dark:text-gray-400">
+								Add Vertex API keys for direct Google Cloud Vertex AI access.
+								Project ID and location are optional overrides.
+							</p>
+
+							{/* Existing keys */}
+							<Show when={vertexKeys().length > 0}>
+								<div class="space-y-2">
+									<For each={vertexKeys()}>
+										{(key, index) => (
+											<div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+												<div class="flex-1 min-w-0">
+													<code class="text-sm font-mono text-gray-700 dark:text-gray-300">
+														{maskApiKey(key.apiKey)}
+													</code>
+													<Show when={key.projectId}>
+														<p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+															Project: {key.projectId}
+														</p>
+													</Show>
+													<Show when={key.location}>
+														<p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+															Location: {key.location}
+														</p>
+													</Show>
+												</div>
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() => handleDeleteVertexKey(index())}
+												>
+													<svg
+														class="w-4 h-4 text-red-500"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															stroke-width="2"
+															d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+														/>
+													</svg>
+												</Button>
+											</div>
+										)}
+									</For>
+								</div>
+							</Show>
+
+							{/* Add form */}
+							<Show when={showAddForm() && activeTab() === "vertex"}>
+								<div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 space-y-3">
+									<label class="block">
+										<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+											API Key *
+										</span>
+										<input
+											type="password"
+											value={newVertexKey().apiKey}
+											onInput={(e) =>
+												setNewVertexKey({
+													...newVertexKey(),
+													apiKey: e.currentTarget.value,
+												})
+											}
+											placeholder="AIza..."
+											class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+										/>
+									</label>
+									<label class="block">
+										<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+											Project ID (optional)
+										</span>
+										<input
+											type="text"
+											value={newVertexKey().projectId || ""}
+											onInput={(e) =>
+												setNewVertexKey({
+													...newVertexKey(),
+													projectId: e.currentTarget.value || undefined,
+												})
+											}
+											placeholder="my-project-id"
+											class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+										/>
+									</label>
+									<label class="block">
+										<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+											Location (optional)
+										</span>
+										<input
+											type="text"
+											value={newVertexKey().location || ""}
+											onInput={(e) =>
+												setNewVertexKey({
+													...newVertexKey(),
+													location: e.currentTarget.value || undefined,
+												})
+											}
+											placeholder="us-central1"
+											class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+										/>
+									</label>
+									<label class="block">
+										<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+											Base URL (optional)
+										</span>
+										<input
+											type="text"
+											value={newVertexKey().baseUrl || ""}
+											onInput={(e) =>
+												setNewVertexKey({
+													...newVertexKey(),
+													baseUrl: e.currentTarget.value || undefined,
+												})
+											}
+											placeholder="https://vertexai.googleapis.com"
+											class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+										/>
+									</label>
+									<div class="flex gap-2 pt-2">
+										<Button
+											variant="primary"
+											size="sm"
+											onClick={handleAddVertexKey}
+											disabled={loading()}
+										>
+											Add Key
+										</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={() => setShowAddForm(false)}
+										>
+											Cancel
+										</Button>
+									</div>
+								</div>
+							</Show>
+
+							<Show when={!showAddForm()}>
+								<Button
+									variant="secondary"
+									onClick={() => setShowAddForm(true)}
+									disabled={!proxyStatus().running}
+									class="w-full"
+								>
+									<svg
+										class="w-4 h-4 mr-2"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M12 4v16m8-8H4"
+										/>
+									</svg>
+									Add Vertex API Key
+								</Button>
+							</Show>
+						</div>
+					</Show>
+
 					{/* OpenAI-Compatible Tab */}
 					<Show when={activeTab() === "openai-compatible"}>
 						<div class="space-y-4">
@@ -1608,6 +1833,7 @@ export function ApiKeysPage() {
 							((activeTab() === "gemini" && geminiKeys().length === 0) ||
 								(activeTab() === "claude" && claudeKeys().length === 0) ||
 								(activeTab() === "codex" && codexKeys().length === 0) ||
+								(activeTab() === "vertex" && vertexKeys().length === 0) ||
 								(activeTab() === "openai-compatible" &&
 									openaiProviders().length === 0)) &&
 							!showAddForm()
