@@ -1,3 +1,79 @@
+# ProxyPal v0.4.38
+
+**Released:** 2026-06-04
+
+## Sidecar Upgrade: CLIProxyAPI v7.1.20 → v7.1.44
+
+This release upgrades the bundled CLIProxyAPI sidecar from **v7.1.20** (May 23) to **v7.1.44** (June 3), jumping **24 releases / 68 commits** with critical reliability fixes, auth improvements, and expanded model support.
+
+### Why this matters
+
+Picking up Cloudflare challenge retry logic, Home auth refresh fixes, Codex orphaned tool call prevention, usage metrics enrichment, and support for Claude Opus 4.8 and new Grok models — all with zero API surface breakage.
+
+### What changed (v7.1.21 → v7.1.44)
+
+**Reliability & Auth:**
+
+- **Cloudflare challenge retry/backoff** — 403 errors now retry with exponential backoff (v7.1.42)
+- **Home auth refresh retry** — fixes infinite auth loop for Home users (v7.1.40)
+- **Auth error event publishing + Redis queue** — new event-driven auth lifecycle (v7.1.43–44)
+- **Runtime auth removal and unscheduling** — cleaner auth lifecycle management (v7.1.43)
+- **Incompatible signature interception** — prevents replay of broken signatures (v7.1.28–29)
+- **Enhanced NewUtlsHTTPClient** — context-based RoundTripper for better HTTP handling (v7.1.41)
+
+**Codex:**
+
+- **Orphaned tool call fix** — avoids replaying orphaned tool calls (v7.1.42)
+- **Identity obfuscation** — enhanced with turn and window metadata (v7.1.34–35)
+- **Reasoning replay cache** — caches reasoning replay items for performance (v7.1.40)
+- **Non-empty reasoning/content handling** — fixes trailing empty messages (v7.1.41)
+- **Session and conversation header handling** — refined for reliability (v7.1.37)
+- **WebSocket input ID deduplication** — fixes orphaned output responses (v7.1.42)
+
+**Usage & Metrics:**
+
+- **Executor type tracking** — richer usage breakdown by executor (v7.1.38)
+- **Usage refresh notification support** — enables proactive usage sync via Redis (v7.1.39)
+- **TTFT tracking** — time-to-first-token performance monitoring (v7.1.26)
+- **Service tier + cache token tracking** — improved usage stats granularity (v7.1.24–25)
+
+**Models:**
+
+- **Claude Opus 4.8** — added to model registry (v7.1.31)
+- **grok-composer-2.5-fast** — new model support (v7.1.40)
+- **grok-imagine-video-1.5-preview** — video generation model (v7.1.36)
+- **GPT 5.2 / 5.3 Codex entries** — cleaned up from registry (v7.1.30)
+
+**Fixes & Infrastructure:**
+
+- **Gemini system role normalization** — message-level system roles converted correctly (v7.1.40)
+- **Gemini CLI request schema cleanup** — fixed and logged cleanup errors (v7.1.21)
+- **OpenAI Responses dedupe** — keeps referenced tool calls during input ID dedup (v7.1.42)
+- **Logging** — file-backed sources, RequestID, HomeAppLogForwarder (v7.1.22–23)
+- **Signature provider checks** — upgraded for better detection (v7.1.29)
+- **GPT Image 2 SSE handling** — improved SSE for image generation (v7.1.21)
+
+### ProxyPal code changes
+
+- `src-tauri/binaries/cli-proxy-api-aarch64-apple-darwin` — v7.1.20 → v7.1.44
+- `src-tauri/Cargo.toml:3` — version 0.4.37 → 0.4.38
+- `src-tauri/tauri.conf.json:4` — version 0.4.37 → 0.4.38
+- `package.json` — version 0.4.37 → 0.4.38
+- `.gitignore` — add `.pi/tasks/` to ignore list
+- `pnpm-workspace.yaml` — allow esbuild builds
+
+### Breaking changes check
+
+Zero breakage. Same CLI flags. No ProxyPal-touched config fields changed. All 35 management API endpoints remain backward-compatible.
+
+### Verification
+
+- Binary: `CLIProxyAPI Version: 7.1.44`
+- `cargo check` — clean
+- `tsc --noEmit` — clean
+
+---
+
 # ProxyPal v0.4.37
 
 **Released:** 2026-05-25
