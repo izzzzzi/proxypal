@@ -53,14 +53,46 @@ Picking up Cloudflare challenge retry logic, Home auth refresh fixes, Codex orph
 - **Signature provider checks** — upgraded for better detection (v7.1.29)
 - **GPT Image 2 SSE handling** — improved SSE for image generation (v7.1.21)
 
+---
+
+## CI Pipeline Fixes
+
+This release also resolves a CI regression that caused the "Frontend checks (ts + lint + format)" step to fail on `main`.
+
+### Root cause
+
+Two independent issues:
+
+1. **pnpm workspace mode** — The `pnpm-workspace.yaml` file was introduced in v0.4.37 with `allowBuilds` (not a valid workspace key). Subsequent CI fix attempts added `packages: ['.']` and `onlyBuiltDependencies: ['esbuild']`, which broke pnpm v9 CI — `onlyBuiltDependencies` was introduced in pnpm v10, and switching to workspace mode changed how pnpm resolves transitive dependencies.
+
+2. **oxlint JS plugin resolution** — `@nkzw/oxlint-config` declares 5 JavaScript ESLint plugins (e.g., `eslint-plugin-react-hooks`). In pnpm v10+, these transitive dependencies live in `.pnpm/` virtual store and aren't accessible to Node.js's `require()` from the project root. oxlint's Rust-to-JS plugin loader uses internal `require()`, so it couldn't load them.
+
+### Fixes
+
+- **pnpm-workspace.yaml** — now contains only `allowBuilds: { esbuild: true }` for local pnpm v11 compat. CI's pnpm v9 ignores the unknown key, stays in non-workspace mode.
+- **package.json** — added 5 oxlint JS plugins as **direct devDependencies** so pnpm links them at `node_modules/` level:
+  - `@nkzw/eslint-plugin`
+  - `eslint-plugin-no-only-tests`
+  - `eslint-plugin-perfectionist`
+  - `eslint-plugin-react-hooks`
+  - `eslint-plugin-unused-imports`
+
+### Verification
+
+- `oxlint` — 0 warnings, 0 errors
+- `oxfmt --check` — all 130 files formatted correctly
+- `tsc --noEmit` — clean
+
+---
+
 ### ProxyPal code changes
 
 - `src-tauri/binaries/cli-proxy-api-aarch64-apple-darwin` — v7.1.20 → v7.1.44
 - `src-tauri/Cargo.toml:3` — version 0.4.37 → 0.4.38
 - `src-tauri/tauri.conf.json:4` — version 0.4.37 → 0.4.38
-- `package.json` — version 0.4.37 → 0.4.38
+- `package.json` — version 0.4.37 → 0.4.38; add 5 oxlint JS plugin devDeps
 - `.gitignore` — add `.pi/tasks/` to ignore list
-- `pnpm-workspace.yaml` — allow esbuild builds
+- `pnpm-workspace.yaml` — create with `allowBuilds` for local pnpm v11 compat
 
 ### Breaking changes check
 
@@ -70,7 +102,7 @@ Zero breakage. Same CLI flags. No ProxyPal-touched config fields changed. All 35
 
 - Binary: `CLIProxyAPI Version: 7.1.44`
 - `cargo check` — clean
-- `tsc --noEmit` — clean
+- `oxlint` + `oxfmt` + `tsc --noEmit` — clean
 
 ---
 
