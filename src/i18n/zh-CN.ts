@@ -221,6 +221,7 @@ export const zhCN = {
       testing: "测试中...",
       upload: "上传",
       uploadAuthFile: "上传认证文件",
+      uploadingProgress: "上传中（{{current}}/{{total}}）...",
     },
     filters: {
       all: "全部（{{count}}）",
@@ -252,6 +253,8 @@ export const zhCN = {
       allAuthFilesDeleted: "所有认证文件已删除",
       authFileDeleted: "认证文件已删除",
       authFileUploadedSuccessfully: "认证文件上传成功",
+      batchUploadSucceeded: "已成功上传 {{count}} 个认证文件",
+      batchUploadErrors: "{{count}} 个文件上传失败",
       batchDeleted: "已删除 {{count}} 个认证文件",
       batchDeleteErrors: "{{count}} 个文件删除失败",
       connectionFailed: "连接失败",

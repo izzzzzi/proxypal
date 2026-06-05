@@ -223,6 +223,7 @@ export const en = {
       testing: "Testing...",
       upload: "Upload",
       uploadAuthFile: "Upload Auth File",
+      uploadingProgress: "Uploading ({{current}}/{{total}})...",
     },
     filters: {
       all: "All ({{count}})",
@@ -255,6 +256,8 @@ export const en = {
       allAuthFilesDeleted: "All auth files deleted",
       authFileDeleted: "Auth file deleted",
       authFileUploadedSuccessfully: "Auth file uploaded successfully",
+      batchUploadSucceeded: "{{count}} auth file(s) uploaded successfully",
+      batchUploadErrors: "{{count}} file(s) failed to upload",
       batchDeleted: "{{count}} auth file(s) deleted",
       batchDeleteErrors: "{{count}} file(s) failed to delete",
       connectionFailed: "Connection failed",

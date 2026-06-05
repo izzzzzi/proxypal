@@ -222,6 +222,7 @@ export const vi = {
       testing: "Đang kiểm tra...",
       upload: "Tải lên",
       uploadAuthFile: "Tải lên tệp xác thực",
+      uploadingProgress: "Đang tải lên ({{current}}/{{total}})...",
     },
     filters: {
       all: "Tất cả ({{count}})",
@@ -254,6 +255,8 @@ export const vi = {
       allAuthFilesDeleted: "Đã xóa tất cả tệp xác thực",
       authFileDeleted: "Đã xóa tệp xác thực",
       authFileUploadedSuccessfully: "Tải lên tệp xác thực thành công",
+      batchUploadSucceeded: "Đã tải lên thành công {{count}} tệp xác thực",
+      batchUploadErrors: "{{count}} tệp tải lên thất bại",
       batchDeleted: "Đã xóa {{count}} tệp xác thực",
       batchDeleteErrors: "{{count}} tệp xóa thất bại",
       connectionFailed: "Kết nối thất bại",

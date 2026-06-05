@@ -81,42 +81,75 @@ export function AuthFilesPage() {
     }
   };
 
+  // Detect provider from filename using common prefixes
+  const detectProviderFromFilename = (filename: string): string => {
+    if (filename.includes("gemini")) return "gemini";
+    if (filename.includes("codex")) return "codex";
+    if (filename.includes("qwen")) return "qwen";
+    if (filename.includes("iflow")) return "iflow";
+    if (filename.includes("vertex")) return "vertex";
+    if (filename.includes("kiro")) return "kiro";
+    if (filename.includes("antigravity")) return "antigravity";
+    if (filename.includes("kimi")) return "kimi";
+    if (filename.includes("deepseek")) return "deepseek";
+    return "claude";
+  };
+
+  const [uploadingFiles, setUploadingFiles] = createSignal<string[]>([]);
+  const [uploadTotal, setUploadTotal] = createSignal(0);
+
   const handleUpload = async () => {
     try {
       const selected = await open({
         filters: [{ extensions: ["json"], name: "JSON" }],
-        multiple: false,
+        multiple: true,
       });
 
-      if (selected) {
-        // Try to detect provider from filename
-        const filename = selected.split("/").pop() || "";
-        let provider = "claude"; // default
+      if (!selected) return;
 
-        if (filename.includes("gemini")) {
-          provider = "gemini";
-        } else if (filename.includes("codex")) {
-          provider = "codex";
-        } else if (filename.includes("qwen")) {
-          provider = "qwen";
-        } else if (filename.includes("iflow")) {
-          provider = "iflow";
-        } else if (filename.includes("vertex")) {
-          provider = "vertex";
-        } else if (filename.includes("kiro")) {
-          provider = "kiro";
-        } else if (filename.includes("antigravity")) {
-          provider = "antigravity";
-        } else if (filename.includes("kimi")) {
-          provider = "kimi";
-        } else if (filename.includes("deepseek")) {
-          provider = "deepseek";
+      const paths = Array.isArray(selected) ? selected : [selected];
+      if (paths.length === 0) return;
+
+      let successCount = 0;
+      const errors: { file: string; error: string }[] = [];
+      setUploadTotal(paths.length);
+
+      for (const filePath of paths) {
+        const filename = filePath.split("/").pop() || "";
+        const provider = detectProviderFromFilename(filename);
+
+        // Show per-file progress indicator
+        setUploadingFiles((prev) => [...prev, filename]);
+
+        try {
+          await uploadAuthFile(filePath, provider);
+          successCount++;
+        } catch (error) {
+          errors.push({ file: filename, error: String(error) });
+        } finally {
+          setUploadingFiles((prev) => prev.filter((f) => f !== filename));
         }
-
-        await uploadAuthFile(selected, provider);
-        toastStore.success(t("authFiles.toasts.authFileUploadedSuccessfully"));
-        loadFiles();
       }
+
+      setUploadTotal(0);
+
+      // Show summary toasts
+      if (successCount > 0) {
+        if (paths.length === 1 && errors.length === 0) {
+          toastStore.success(t("authFiles.toasts.authFileUploadedSuccessfully"));
+        } else {
+          toastStore.success(t("authFiles.toasts.batchUploadSucceeded", { count: successCount }));
+        }
+      }
+      if (errors.length > 0) {
+        const errorMsgs = errors.map((e) => `${e.file}: ${e.error}`);
+        toastStore.error(
+          t("authFiles.toasts.batchUploadErrors", { count: errors.length }),
+          errorMsgs.join("; "),
+        );
+      }
+
+      loadFiles();
     } catch (error) {
       toastStore.error(t("authFiles.toasts.failedToUploadFile"), String(error));
     }
@@ -376,7 +409,7 @@ export function AuthFilesPage() {
             <h1 class="text-lg font-bold text-gray-900 dark:text-gray-100">
               {t("authFiles.title")}
             </h1>
-            <Show when={loading()}>
+            <Show when={loading() || uploadingFiles().length > 0}>
               <span class="ml-2 flex items-center gap-1 text-xs text-gray-400">
                 <svg class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle
@@ -393,7 +426,15 @@ export function AuthFilesPage() {
                     fill="currentColor"
                   />
                 </svg>
-                {t("common.loading")}
+                <Show
+                  when={uploadingFiles().length > 0 && uploadTotal() > 0}
+                  fallback={t("common.loading")}
+                >
+                  {t("authFiles.actions.uploadingProgress", {
+                    current: uploadingFiles().length,
+                    total: uploadTotal(),
+                  })}
+                </Show>
               </span>
             </Show>
           </div>
