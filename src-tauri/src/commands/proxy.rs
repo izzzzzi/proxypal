@@ -66,6 +66,7 @@ fn build_proxy_config_yaml(
     config: &AppConfig,
     config_dir: &std::path::Path,
     auth_dir: &std::path::Path,
+    oauth_excluded_models_section: &str,
 ) -> Result<String, String> {
     let proxy_url_line = build_proxy_url_line(config);
     let amp_api_key_line = build_amp_api_key_line(config);
@@ -151,6 +152,13 @@ ws-auth: {}
         config.commercial_mode,
         config.ws_auth
     );
+
+    // Append oauth-excluded-models section (prevents Antigravity from registering
+    // overlapping Claude models when both providers are available)
+    if !oauth_excluded_models_section.is_empty() {
+        proxy_config.push_str(oauth_excluded_models_section);
+        proxy_config.push('\n');
+    }
 
     // Append user customizations from proxy-config-custom.yaml if it exists
     let custom_config_path = config_dir.join("proxy-config-custom.yaml");
@@ -650,7 +658,30 @@ pub async fn start_proxy(
     let proxy_config_path = config_dir.join("proxy-config.yaml");
 
     // Build YAML config and append user customizations
-    let proxy_config = build_proxy_config_yaml(&config, &config_dir, &auth_dir)?;
+    // Check if both Antigravity (OAuth) and Claude (API key or OAuth) are present.
+    // When both exist, Antigravity registers `gemini-claude-*` model variants that overlap
+    // with Claude's own models. Since provider names sort alphabetically, "antigravity"
+    // takes priority over "claude" — we instruct the sidecar to exclude these overlapping
+    // models from Antigravity's registration.
+    let oauth_excluded_models_section = {
+        let auth = state.auth_status.lock().unwrap();
+        let has_antigravity = auth.antigravity > 0;
+        let has_claude_oauth = auth.claude > 0;
+        let has_claude_apikey = !config.claude_api_keys.is_empty();
+        if has_antigravity && (has_claude_oauth || has_claude_apikey) {
+            format!(
+                "# Prevent Antigravity from registering Claude model variants\n\
+                 # when both providers are configured\n\
+                 oauth-excluded-models:\n  antigravity:\n    - \"gemini-claude-*\"\n"
+            )
+        } else {
+            String::new()
+        }
+    };
+
+    let proxy_config = build_proxy_config_yaml(
+        &config, &config_dir, &auth_dir, &oauth_excluded_models_section
+    )?;
     std::fs::write(&proxy_config_path, proxy_config).map_err(|e| e.to_string())?;
 
     // Spawn the sidecar process with WRITABLE_PATH set to app config dir
