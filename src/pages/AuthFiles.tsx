@@ -83,15 +83,33 @@ export function AuthFilesPage() {
 
   // Detect provider from filename using common prefixes
   const detectProviderFromFilename = (filename: string): string => {
-    if (filename.includes("gemini")) return "gemini";
-    if (filename.includes("codex")) return "codex";
-    if (filename.includes("qwen")) return "qwen";
-    if (filename.includes("iflow")) return "iflow";
-    if (filename.includes("vertex")) return "vertex";
-    if (filename.includes("kiro")) return "kiro";
-    if (filename.includes("antigravity")) return "antigravity";
-    if (filename.includes("kimi")) return "kimi";
-    if (filename.includes("deepseek")) return "deepseek";
+    if (filename.includes("gemini")) {
+      return "gemini";
+    }
+    if (filename.includes("codex")) {
+      return "codex";
+    }
+    if (filename.includes("qwen")) {
+      return "qwen";
+    }
+    if (filename.includes("iflow")) {
+      return "iflow";
+    }
+    if (filename.includes("vertex")) {
+      return "vertex";
+    }
+    if (filename.includes("kiro")) {
+      return "kiro";
+    }
+    if (filename.includes("antigravity")) {
+      return "antigravity";
+    }
+    if (filename.includes("kimi")) {
+      return "kimi";
+    }
+    if (filename.includes("deepseek")) {
+      return "deepseek";
+    }
     return "claude";
   };
 
@@ -105,13 +123,17 @@ export function AuthFilesPage() {
         multiple: true,
       });
 
-      if (!selected) return;
+      if (!selected) {
+        return;
+      }
 
       const paths = Array.isArray(selected) ? selected : [selected];
-      if (paths.length === 0) return;
+      if (paths.length === 0) {
+        return;
+      }
 
       let successCount = 0;
-      const errors: { file: string; error: string }[] = [];
+      const errors: { error: string; file: string }[] = [];
       setUploadTotal(paths.length);
 
       for (const filePath of paths) {
@@ -125,7 +147,7 @@ export function AuthFilesPage() {
           await uploadAuthFile(filePath, provider);
           successCount++;
         } catch (error) {
-          errors.push({ file: filename, error: String(error) });
+          errors.push({ error: String(error), file: filename });
         } finally {
           setUploadingFiles((prev) => prev.filter((f) => f !== filename));
         }
@@ -427,8 +449,8 @@ export function AuthFilesPage() {
                   />
                 </svg>
                 <Show
-                  when={uploadingFiles().length > 0 && uploadTotal() > 0}
                   fallback={t("common.loading")}
+                  when={uploadingFiles().length > 0 && uploadTotal() > 0}
                 >
                   {t("authFiles.actions.uploadingProgress", {
                     current: uploadingFiles().length,
