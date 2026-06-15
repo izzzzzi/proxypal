@@ -437,6 +437,8 @@ pub fn run() {
             commands::settings::get_reasoning_effort_settings,
             commands::settings::set_reasoning_effort_settings,
             commands::api_keys::get_openai_compatible_providers,
+            commands::api_keys::validate_claude_api_keys,
+            commands::api_keys::cleanup_claude_api_keys,
             commands::api_keys::set_openai_compatible_providers,
             commands::api_keys::add_openai_compatible_provider,
             commands::api_keys::delete_openai_compatible_provider,

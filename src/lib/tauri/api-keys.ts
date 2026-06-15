@@ -88,6 +88,21 @@ export async function deleteClaudeApiKey(index: number): Promise<void> {
   return invoke("delete_claude_api_key", { index });
 }
 
+export interface ClaudeKeyHealth {
+  index: number;
+  keyPrefix: string;
+  status: "valid" | "invalid" | "low_balance" | "error";
+  message: string;
+}
+
+export async function validateClaudeApiKeys(): Promise<ClaudeKeyHealth[]> {
+  return invoke("validate_claude_api_keys");
+}
+
+export async function cleanupClaudeApiKeys(): Promise<ClaudeKeyHealth[]> {
+  return invoke("cleanup_claude_api_keys");
+}
+
 // Codex API Keys
 export async function getCodexApiKeys(): Promise<CodexApiKey[]> {
   return invoke("get_codex_api_keys");

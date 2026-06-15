@@ -1,11 +1,16 @@
 import { createEffect, createMemo, createSignal, For, Show, splitProps } from "solid-js";
 import { useI18n } from "../../i18n";
-import { getClaudeApiKeys, setClaudeApiKeys } from "../../lib/tauri";
+import {
+  getClaudeApiKeys,
+  setClaudeApiKeys,
+  validateClaudeApiKeys,
+  cleanupClaudeApiKeys,
+} from "../../lib/tauri";
 import { appStore } from "../../stores/app";
 import { toastStore } from "../../stores/toast";
 import { Button } from "../ui";
 
-import type { ClaudeApiKey } from "../../lib/tauri";
+import type { ClaudeApiKey, ClaudeKeyHealth } from "../../lib/tauri";
 
 interface ClaudeKeysTabProps {
   loading: () => boolean;
@@ -19,6 +24,8 @@ export function ClaudeKeysTab(props: ClaudeKeysTabProps) {
   const { t } = useI18n();
   const { proxyStatus } = appStore;
   const [claudeKeys, setClaudeKeys] = createSignal<ClaudeApiKey[]>([]);
+  const [validationResults, setValidationResults] = createSignal<ClaudeKeyHealth[] | null>(null);
+  const [validating, setValidating] = createSignal(false);
   const [newClaudeKey, setNewClaudeKey] = createSignal<ClaudeApiKey>({
     apiKey: "",
   });
@@ -82,8 +89,53 @@ export function ClaudeKeysTab(props: ClaudeKeysTabProps) {
       await setClaudeApiKeys(updated);
       setClaudeKeys(updated);
       toastStore.success(t("apiKeys.toasts.apiKeyDeleted", { provider: "Claude" }));
+      setValidationResults(null); // Clear validation after change
     } catch (error) {
       toastStore.error(t("apiKeys.toasts.failedToDeleteKey"), String(error));
+    } finally {
+      local.setLoading(false);
+    }
+  };
+
+  const handleValidateKeys = async () => {
+    setValidating(true);
+    setValidationResults(null);
+    try {
+      const results = await validateClaudeApiKeys();
+      setValidationResults(results);
+
+      const bad = results.filter((r) => r.status === "invalid" || r.status === "low_balance");
+      if (bad.length > 0) {
+        toastStore.warning(
+          `Found ${bad.length} problematic key(s). Use "Cleanup" to remove them.`,
+        );
+      } else if (results.every((r) => r.status === "valid")) {
+        toastStore.success("All Claude API keys are valid!");
+      }
+    } catch (error) {
+      toastStore.error("Validation failed", String(error));
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const handleCleanupKeys = async () => {
+    local.setLoading(true);
+    try {
+      const results = await cleanupClaudeApiKeys();
+      setValidationResults(results);
+      // Reload keys
+      const claude = await getClaudeApiKeys();
+      setClaudeKeys(claude);
+
+      const removed = results.filter((r) => r.status === "invalid" || r.status === "low_balance");
+      if (removed.length > 0) {
+        toastStore.success(`Removed ${removed.length} problematic key(s)`);
+      } else {
+        toastStore.success("No problematic keys to remove");
+      }
+    } catch (error) {
+      toastStore.error("Cleanup failed", String(error));
     } finally {
       local.setLoading(false);
     }
@@ -100,6 +152,89 @@ export function ClaudeKeysTab(props: ClaudeKeysTabProps) {
   return (
     <div class="space-y-4">
       <Show when={claudeKeys().length > 0}>
+        <div class="flex items-center gap-2">
+          <Button
+            disabled={validating() || !proxyStatus().running}
+            onClick={handleValidateKeys}
+            size="sm"
+            variant="secondary"
+          >
+            <svg
+              class="mr-1 h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
+            {validating() ? "Validating..." : "Validate All"}
+          </Button>
+          <Button
+            disabled={local.loading() || !proxyStatus().running}
+            onClick={handleCleanupKeys}
+            size="sm"
+            variant="danger"
+          >
+            <svg
+              class="mr-1 h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
+            Cleanup Dead Keys
+          </Button>
+        </div>
+
+        <Show when={validationResults()}>
+          <div class="space-y-1">
+            <For each={validationResults()}>
+              {(result) => (
+                <div
+                  class={`flex items-center justify-between rounded-lg border p-2 text-sm ${
+                    result.status === "valid"
+                      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400"
+                      : result.status === "low_balance"
+                        ? "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                        : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
+                  }`}
+                >
+                  <div class="min-w-0 flex-1">
+                    <code class="font-mono text-xs">{result.keyPrefix}</code>
+                    <p class="text-xs opacity-75">{result.message}</p>
+                  </div>
+                  <span
+                    class={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      result.status === "valid"
+                        ? "bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200"
+                        : result.status === "low_balance"
+                          ? "bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200"
+                          : "bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200"
+                    }`}
+                  >
+                    {result.status === "valid"
+                      ? "OK"
+                      : result.status === "low_balance"
+                        ? "No Balance"
+                        : "Invalid"}
+                  </span>
+                </div>
+              )}
+            </For>
+          </div>
+        </Show>
+
         <div class="space-y-2">
           <For each={claudeKeys()}>
             {(key, index) => (
