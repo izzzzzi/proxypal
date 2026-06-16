@@ -39,12 +39,11 @@ async function resolveRelease(channelConfig, headers) {
 
   const apiRes = await fetch(apiUrl, { headers });
   if (!apiRes.ok) {
-    const hint =
-      channelConfig.repo.includes("CLIProxyAPIPlus")
-        ? "\nCLIProxyAPIPlus may be private, renamed, or unavailable. To use mainline instead, run: CLIPROXYAPI_CHANNEL=mainline pnpm update-sidecar"
-        : pinnedVersion
-          ? `\nPinned sidecar version v${pinnedVersion} was not found. Update scripts/sidecar-version or set CLIPROXYAPI_VERSION.`
-          : "";
+    const hint = channelConfig.repo.includes("CLIProxyAPIPlus")
+      ? "\nCLIProxyAPIPlus may be private, renamed, or unavailable. To use mainline instead, run: CLIPROXYAPI_CHANNEL=mainline pnpm update-sidecar"
+      : pinnedVersion
+        ? `\nPinned sidecar version v${pinnedVersion} was not found. Update scripts/sidecar-version or set CLIPROXYAPI_VERSION.`
+        : "";
     throw new Error(
       `GitHub API error (${apiRes.status}): ${apiRes.statusText} for ${apiUrl}${hint}`,
     );

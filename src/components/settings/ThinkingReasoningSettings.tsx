@@ -16,7 +16,7 @@ import { Button, Switch } from "../ui";
 
 import type { SettingsBaseProps } from "./types";
 
-interface ThinkingReasoningSettingsProps extends SettingsBaseProps {}
+type ThinkingReasoningSettingsProps = SettingsBaseProps;
 
 export function ThinkingReasoningSettings(props: ThinkingReasoningSettingsProps) {
   const { t } = useI18n();
