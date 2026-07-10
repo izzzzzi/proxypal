@@ -12,14 +12,16 @@ pub mod quota;
 pub mod settings;
 pub mod usage;
 
-pub mod ssh;
 pub mod cloudflare;
+pub mod ssh;
 
 pub use agents::*;
 pub use amp::*;
 pub use api_keys::*;
 pub use auth::*;
 pub use auth_files::*;
+#[allow(unused_imports)]
+pub use cloudflare::*;
 pub use copilot::*;
 pub use health::*;
 pub use logs::*;
@@ -27,7 +29,5 @@ pub use models::*;
 pub use proxy::*;
 pub use quota::*;
 pub use settings::*;
-pub use usage::*;
 pub use ssh::*;
-#[allow(unused_imports)]
-pub use cloudflare::*;
+pub use usage::*;

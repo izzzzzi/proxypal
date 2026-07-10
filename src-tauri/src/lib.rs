@@ -1,22 +1,22 @@
+mod cloudflare_manager;
 mod commands;
 mod config;
 mod helpers;
 mod proxy;
+mod ssh_manager;
 mod state;
 mod types;
 mod utils;
-mod ssh_manager;
-mod cloudflare_manager;
 
+use crate::cloudflare_manager::CloudflareManager;
 use crate::config::{get_auth_path, load_config};
 use crate::helpers::migration::migrate_to_split_storage;
-use crate::state::AppState;
-use crate::types::{ProxyStatus, AuthStatus, CopilotStatus};
 use crate::ssh_manager::SshManager;
-use crate::cloudflare_manager::CloudflareManager;
-use std::sync::Mutex;
+use crate::state::AppState;
+use crate::types::{AuthStatus, CopilotStatus, ProxyStatus};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -132,8 +132,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // icon_as_template is macOS-only (renders icon as template image for dark/light mode).
     // On Windows/Linux the concept doesn't exist — calling it causes a transparent/invisible tray icon.
     #[allow(unused_mut)]
-    let mut tray_builder = TrayIconBuilder::new()
-        .icon(tray_icon);
+    let mut tray_builder = TrayIconBuilder::new().icon(tray_icon);
     #[cfg(target_os = "macos")]
     {
         tray_builder = tray_builder.icon_as_template(true);
@@ -198,7 +197,6 @@ pub(crate) fn get_management_url(port: u16, endpoint: &str) -> String {
     format!("http://127.0.0.1:{}/v0/management/{}", port, endpoint)
 }
 
-
 // Check if auto-updater is supported on this platform/install type
 // Linux .deb installations do NOT support auto-update (only AppImage does)
 #[tauri::command]
@@ -209,10 +207,10 @@ fn is_updater_supported() -> Result<serde_json::Value, String> {
         let is_appimage = std::env::var("APPIMAGE").is_ok();
         Ok(serde_json::json!({
             "supported": is_appimage,
-            "reason": if is_appimage { 
-                "AppImage supports auto-update" 
-            } else { 
-                "Auto-update is only supported for AppImage installations. Please download the new version manually from GitHub Releases." 
+            "reason": if is_appimage {
+                "AppImage supports auto-update"
+            } else {
+                "Auto-update is only supported for AppImage installations. Please download the new version manually from GitHub Releases."
             }
         }))
     }
@@ -261,8 +259,9 @@ pub fn run() {
         proxy_process: Mutex::new(None),
         copilot_status: Mutex::new(CopilotStatus::default()),
         copilot_process: Mutex::new(None),
-        log_watcher_running: Arc::new(AtomicBool::new(false)),
-        request_counter: Arc::new(AtomicU64::new(0)),
+			log_watcher_running: Arc::new(AtomicBool::new(false)),
+			usage_queue_collector_gen: Arc::new(AtomicU64::new(0)),
+			request_counter: Arc::new(AtomicU64::new(0)),
     };
 
     tauri::Builder::default()
@@ -348,7 +347,10 @@ pub fn run() {
                     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     let state = app_handle.state::<AppState>();
                     match commands::copilot::start_copilot(app_handle.clone(), state).await {
-                        Ok(status) => println!("[Copilot] Auto-start successful: running={}", status.running),
+                        Ok(status) => println!(
+                            "[Copilot] Auto-start successful: running={}",
+                            status.running
+                        ),
                         Err(e) => eprintln!("[Copilot] Auto-start failed: {}", e),
                     }
                 }
@@ -495,7 +497,7 @@ pub fn run() {
                                 .try_state::<AppState>()
                                 .map(|state| state.config.lock().unwrap().close_to_tray)
                                 .unwrap_or(true);
-                            
+
                             if close_to_tray {
                                 // Hide to tray instead of closing
                                 if let Some(window) = app_handle.get_webview_window("main") {
@@ -511,9 +513,11 @@ pub fn run() {
                 tauri::RunEvent::ExitRequested { .. } => {
                     // Cleanup: Kill proxy and copilot processes before exit
                     if let Some(state) = app_handle.try_state::<AppState>() {
-                        // Stop log watcher thread
+                        // Stop background threads
                         state.log_watcher_running.store(false, Ordering::SeqCst);
-                        
+                        // Invalidate usage-queue collector (generation bump stops the thread)
+                        state.usage_queue_collector_gen.fetch_add(1, Ordering::SeqCst);
+
                         // Kill cliproxyapi process
                         if let Ok(mut process_guard) = state.proxy_process.lock() {
                             if let Some(child) = process_guard.take() {

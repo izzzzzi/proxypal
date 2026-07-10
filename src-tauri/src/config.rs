@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+use uuid::Uuid;
+
 use crate::types::{
     amp::generate_uuid, cloudflare::CloudflareConfig, AmpModelMapping, AmpOpenAIProvider,
     ClaudeApiKey, CodexApiKey, CopilotConfig, GeminiApiKey, SshConfig, VertexApiKey,
@@ -79,7 +81,7 @@ pub struct AppConfig {
     pub management_key: String,
     #[serde(default)]
     pub commercial_mode: bool,
-    #[serde(default)]
+    #[serde(default = "default_ws_auth")]
     pub ws_auth: bool,
     #[serde(default)]
     pub sidebar_pinned: bool,
@@ -98,7 +100,7 @@ fn default_disable_control_panel() -> bool {
 }
 
 fn default_management_key() -> String {
-    "proxypal-mgmt-key".to_string()
+    new_management_key()
 }
 
 fn default_proxy_api_key() -> String {
@@ -129,8 +131,16 @@ fn default_gemini_thinking_injection() -> bool {
     true
 }
 
+fn default_ws_auth() -> bool {
+    true
+}
+
 fn default_locale() -> String {
     "en".to_string()
+}
+
+fn new_management_key() -> String {
+    format!("proxypal-{}", Uuid::new_v4())
 }
 
 impl Default for AppConfig {
@@ -171,9 +181,9 @@ impl Default for AppConfig {
             close_to_tray: true,
             max_retry_interval: 0,
             proxy_api_key: "proxypal-local".to_string(),
-            management_key: "proxypal-mgmt-key".to_string(),
+            management_key: new_management_key(),
             commercial_mode: false,
-            ws_auth: false,
+            ws_auth: true,
             locale: "en".to_string(),
             ssh_configs: Vec::new(),
             cloudflare_configs: Vec::new(),
@@ -230,6 +240,16 @@ pub fn load_config() -> AppConfig {
 }
 
 fn migrate_config(config: &mut AppConfig) -> bool {
+    let mut changed = false;
+
+    // Migrate legacy management key to a unique UUID-backed key
+    if config.management_key == "proxypal-mgmt-key" {
+        eprintln!("[ProxyPal] Migrating legacy management key to a unique key...");
+        config.management_key = new_management_key();
+        changed = true;
+    }
+
+    // Migrate deprecated single amp_openai_provider to providers array
     if let Some(old_provider) = config.amp_openai_provider.take() {
         if config.amp_openai_providers.is_empty() {
             eprintln!("[ProxyPal] Migrating config from old provider format to array format...");
@@ -250,12 +270,15 @@ fn migrate_config(config: &mut AppConfig) -> bool {
                 old_provider
             };
             config.amp_openai_providers.push(provider_with_id);
-            eprintln!("[ProxyPal] Config migration complete");
-            return true;
+            changed = true;
         }
     }
 
-    false
+    if changed {
+        eprintln!("[ProxyPal] Config migration complete");
+    }
+
+    changed
 }
 
 fn load_config_from_path(path: &Path) -> AppConfig {
@@ -347,7 +370,7 @@ pub(crate) fn save_config_to_path(path: &Path, config: &AppConfig) -> Result<(),
     }
 
     // Atomic rename from temp to actual config file
-    std::fs::rename(&temp_path, &path)
+    std::fs::rename(&temp_path, path)
         .map_err(|e| format!("Failed to rename temp file to config: {}", e))?;
 
     eprintln!("[ProxyPal] Config saved successfully to: {:?}", path);
@@ -395,6 +418,34 @@ mod tests {
             loaded.routing_strategy,
             AppConfig::default().routing_strategy
         );
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn default_management_key_is_unique_and_not_the_legacy_key() {
+        let first = AppConfig::default().management_key;
+        let second = AppConfig::default().management_key;
+
+        assert_ne!(first, "proxypal-mgmt-key");
+        assert_ne!(first, second);
+    }
+
+    #[test]
+    fn load_config_replaces_legacy_management_key() {
+        let dir = test_dir("config-management-key");
+        let path = dir.join("config.json");
+        let mut legacy_config = AppConfig::default();
+        legacy_config.management_key = "proxypal-mgmt-key".to_string();
+        fs::write(&path, serde_json::to_string(&legacy_config).unwrap()).unwrap();
+
+        let loaded = load_config_from_path(&path);
+
+        assert_ne!(loaded.management_key, "proxypal-mgmt-key");
+        assert!(loaded.management_key.starts_with("proxypal-"));
+        assert!(fs::read_to_string(&path)
+            .unwrap()
+            .contains(&loaded.management_key));
 
         let _ = fs::remove_dir_all(dir);
     }

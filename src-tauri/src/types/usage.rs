@@ -148,7 +148,7 @@ pub struct RequestHistory {
     #[serde(default)]
     pub tokens_by_hour: Vec<TimeSeriesPoint>,
     #[serde(default)]
-    pub total_request_count: u64,  // Actual total requests (not capped at 500)
+    pub total_request_count: u64, // Actual total requests (not capped at 500)
     #[serde(default)]
-    pub total_success_count: u64,  // Successful requests (status < 400) across all history
+    pub total_success_count: u64, // Successful requests (status < 400) across all history
 }

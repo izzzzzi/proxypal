@@ -1,5 +1,6 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { AlertDialog } from "@kobalte/core/alert-dialog";
 import { Chart, registerables } from "chart.js";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import {
@@ -301,6 +302,7 @@ export function Analytics() {
   const [privacyMode, setPrivacyMode] = createSignal(false);
   const [exporting, setExporting] = createSignal(false);
   const [importing, setImporting] = createSignal(false);
+  const [pendingImportData, setPendingImportData] = createSignal<UsageStats | null>(null);
 
   const fetchStats = async (showToast = false) => {
     try {
@@ -329,7 +331,7 @@ export function Analytics() {
     }
   };
 
-  // Export usage statistics to JSON file
+  // Export local usage history as a JSON backup file
   const handleExport = async () => {
     try {
       setExporting(true);
@@ -342,16 +344,17 @@ export function Analytics() {
 
       if (filePath) {
         await writeTextFile(filePath, JSON.stringify(data, null, 2));
+        toastStore.success(t("analytics.exportUsageSuccess", { path: filePath }));
       }
     } catch (error) {
-      console.error("Failed to export usage stats:", error);
-      toastStore.error("Failed to export usage stats", String(error));
+      console.error("Failed to export usage history:", error);
+      toastStore.error(t("analytics.exportUsageError"), String(error));
     } finally {
       setExporting(false);
     }
   };
 
-  // Import usage statistics from JSON file
+  // Import usage history from a JSON backup file (replaces local data)
   const handleImport = async () => {
     try {
       setImporting(true);
@@ -363,15 +366,33 @@ export function Analytics() {
       if (filePath) {
         const content = await readTextFile(filePath as string);
         const data = JSON.parse(content);
-        await importUsageStats(data);
-        // Refresh stats after import
-        await fetchStats();
+        // Store parsed data and show confirmation dialog
+        setPendingImportData(data);
       }
     } catch (error) {
-      console.error("Failed to import usage stats:", error);
-      toastStore.error("Failed to import usage stats", String(error));
+      console.error("Failed to import usage history:", error);
+      toastStore.error(t("analytics.importUsageError"), String(error));
     } finally {
       setImporting(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    const data = pendingImportData();
+    if (!data) return;
+
+    try {
+      setImporting(true);
+      const result = await importUsageStats(data);
+      // Refresh stats after import
+      await fetchStats();
+      toastStore.success(t("analytics.importUsageSuccess", { added: result.added }));
+    } catch (error) {
+      console.error("Failed to import usage history:", error);
+      toastStore.error(t("analytics.importUsageError"), String(error));
+    } finally {
+      setImporting(false);
+      setPendingImportData(null);
     }
   };
 
@@ -735,6 +756,32 @@ export function Analytics() {
             </button>
           </div>
         </div>
+
+        {/* Import confirmation dialog */}
+        <AlertDialog open={pendingImportData() !== null} onOpenChange={(isOpen) => { if (!isOpen) setPendingImportData(null); }}>
+          <AlertDialog.Portal>
+            <AlertDialog.Overlay class="fixed inset-0 z-50 bg-black/40" />
+            <AlertDialog.Content class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
+              <AlertDialog.Title class="mb-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {t("analytics.importUsageConfirmTitle")}
+              </AlertDialog.Title>
+              <AlertDialog.Description class="mb-6 text-sm text-gray-600 dark:text-gray-400">
+                {t("analytics.importUsageConfirmMessage")}
+              </AlertDialog.Description>
+              <div class="flex justify-end gap-3">
+                <AlertDialog.CloseButton class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                  {t("common.cancel")}
+                </AlertDialog.CloseButton>
+                <button
+                  class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+                  onClick={handleConfirmImport}
+                >
+                  {t("analytics.import")}
+                </button>
+              </div>
+            </AlertDialog.Content>
+          </AlertDialog.Portal>
+        </AlertDialog>
 
         {/* Empty state - no requests yet */}
         <Show when={!loading() && (!stats() || stats()!.totalRequests === 0)}>

@@ -3,10 +3,11 @@ use tauri::{Emitter, Manager, State};
 use tauri_plugin_shell::ShellExt;
 
 use crate::config::AppConfig;
-use crate::state::AppState;
-use crate::types::ProxyStatus;
-use crate::helpers::log_watcher::start_log_watcher;
 use crate::get_management_key;
+    use crate::commands::usage::start_usage_queue_collector;
+    use crate::helpers::log_watcher::start_log_watcher;
+    use crate::state::AppState;
+use crate::types::ProxyStatus;
 use crate::GPT5_BASE_MODELS;
 use crate::GPT5_REASONING_SUFFIXES;
 
@@ -83,6 +84,7 @@ fn build_proxy_config_yaml(
 
     let mut proxy_config = format!(
         r#"# ProxyPal generated config
+host: "127.0.0.1"
 port: {}
 auth-dir: "{}"
 api-keys:
@@ -101,7 +103,7 @@ quota-exceeded:
 
 # Enable Management API for OAuth flows
 remote-management:
-  allow-remote: true
+  allow-remote: false
   secret-key: "{}"
   disable-control-panel: {}
 
@@ -186,7 +188,10 @@ fn build_openai_compat_section(config: &AppConfig) -> String {
 
     // Custom providers
     for provider in &config.amp_openai_providers {
-        if !provider.name.is_empty() && !provider.base_url.is_empty() && !provider.api_key.is_empty() {
+        if !provider.name.is_empty()
+            && !provider.base_url.is_empty()
+            && !provider.api_key.is_empty()
+        {
             let mut entry = format!("  # Custom OpenAI-compatible provider: {}\n", provider.name);
             entry.push_str(&format!("  - name: \"{}\"\n", provider.name));
             entry.push_str(&format!("    base-url: \"{}\"\n", provider.base_url));
@@ -255,10 +260,18 @@ fn build_copilot_openai_entry(copilot: &crate::types::copilot::CopilotConfig) ->
 
     // xAI, fine-tuned, Gemini, Claude models
     let extra_models = [
-        "grok-code-fast-1", "raptor-mini",
-        "gemini-2.5-pro", "gemini-3-pro-preview", "gemini-3.1-pro-high", "gemini-3.1-pro-low",
-        "claude-haiku-4.5", "claude-opus-4.1", "claude-sonnet-4", "claude-sonnet-4.5",
-        "claude-opus-4.5", "claude-opus-4.6",
+        "grok-code-fast-1",
+        "raptor-mini",
+        "gemini-2.5-pro",
+        "gemini-3-pro-preview",
+        "gemini-3.1-pro-high",
+        "gemini-3.1-pro-low",
+        "claude-haiku-4.5",
+        "claude-opus-4.1",
+        "claude-sonnet-4",
+        "claude-sonnet-4.5",
+        "claude-opus-4.5",
+        "claude-opus-4.6",
     ];
     for name in extra_models {
         entry.push_str(&format!("      - alias: \"{}\"\n", name));
@@ -374,7 +387,11 @@ fn resolve_thinking_budget(config: &AppConfig) -> (u32, &str) {
     } else {
         &config.thinking_budget_mode
     };
-    let custom = if config.thinking_budget_custom == 0 { 16000 } else { config.thinking_budget_custom };
+    let custom = if config.thinking_budget_custom == 0 {
+        16000
+    } else {
+        config.thinking_budget_custom
+    };
     let budget = match mode {
         "low" => 2048,
         "medium" => 8192,
@@ -385,7 +402,11 @@ fn resolve_thinking_budget(config: &AppConfig) -> (u32, &str) {
     (budget, mode)
 }
 
-fn build_payload_section(config: &AppConfig, thinking_budget: u32, thinking_mode_display: &str) -> String {
+fn build_payload_section(
+    config: &AppConfig,
+    thinking_budget: u32,
+    thinking_mode_display: &str,
+) -> String {
     let gemini3_thinking_level = match thinking_budget {
         2048 => "low",
         8192 => "medium",
@@ -398,7 +419,8 @@ fn build_payload_section(config: &AppConfig, thinking_budget: u32, thinking_mode
         String::new()
     };
 
-    format!(r#"# Payload injection for thinking models
+    format!(
+        r#"# Payload injection for thinking models
 # Antigravity Claude: Thinking budget mode: {} ({} tokens)
 # Gemini 3: Thinking injection: {}
 payload:
@@ -438,7 +460,11 @@ payload:
 "#,
         thinking_mode_display,
         thinking_budget,
-        if config.gemini_thinking_injection { format!("enabled ({})", gemini3_thinking_level) } else { "disabled".to_string() },
+        if config.gemini_thinking_injection {
+            format!("enabled ({})", gemini3_thinking_level)
+        } else {
+            "disabled".to_string()
+        },
         thinking_budget,
         thinking_budget,
         gemini_override_section
@@ -446,7 +472,8 @@ payload:
 }
 
 fn build_gemini_override_section(thinking_level: &str) -> String {
-    format!(r#"  override:
+    format!(
+        r#"  override:
     # Gemini 3 models - thinking level
     - models:
         - name: "gemini-3-pro-preview*"
@@ -484,7 +511,9 @@ fn build_gemini_override_section(thinking_level: &str) -> String {
         - name: "gemini-3.5-flash-low*"
       params:
         generationConfig.thinkingConfig.thinkingLevel: "low"
-"#, thinking_level)
+"#,
+        thinking_level
+    )
 }
 
 // Tauri commands
@@ -499,7 +528,7 @@ pub async fn start_proxy(
     state: State<'_, AppState>,
 ) -> Result<ProxyStatus, String> {
     let config = state.config.lock().unwrap().clone();
-    
+
     // Check if already running (according to our tracked state)
     {
         let status = state.proxy_status.lock().unwrap();
@@ -524,9 +553,12 @@ pub async fn start_proxy(
         // Kill by port
         println!("[ProxyPal] Killing any process on port {}", port);
         let _ = std::process::Command::new("sh")
-            .args(["-c", &format!("lsof -ti :{} | xargs kill -9 2>/dev/null", port)])
+            .args([
+                "-c",
+                &format!("lsof -ti :{} | xargs kill -9 2>/dev/null", port),
+            ])
             .output();
-        
+
         // Also kill any orphaned cliproxyapi processes by name
         println!("[ProxyPal] Killing any orphaned cliproxyapi processes");
         let _ = std::process::Command::new("sh")
@@ -543,7 +575,12 @@ pub async fn start_proxy(
             port
         );
         let mut ps_cmd = std::process::Command::new("powershell");
-        ps_cmd.args(["-NoProfile", "-NonInteractive", "-Command", &kill_by_port_script]);
+        ps_cmd.args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            &kill_by_port_script,
+        ]);
         #[cfg(target_os = "windows")]
         ps_cmd.creation_flags(CREATE_NO_WINDOW);
         let _ = ps_cmd.output();
@@ -612,7 +649,7 @@ pub async fn start_proxy(
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join(".cli-proxy-api");
     std::fs::create_dir_all(&auth_dir).ok(); // Best-effort: create if missing
-    
+
     let proxy_config_path = config_dir.join("proxy-config.yaml");
 
     // Build YAML config and append user customizations
@@ -627,18 +664,20 @@ pub async fn start_proxy(
         let has_claude_oauth = auth.claude > 0;
         let has_claude_apikey = !config.claude_api_keys.is_empty();
         if has_antigravity && (has_claude_oauth || has_claude_apikey) {
-            format!(
                 "# Prevent Antigravity from registering Claude model variants\n\
-                 # when both providers are configured\n\
-                 oauth-excluded-models:\n  antigravity:\n    - \"gemini-claude-*\"\n"
-            )
+                     # when both providers are configured\n\
+                     oauth-excluded-models:\n  antigravity:\n    - \"gemini-claude-*\"\n"
+                    .to_string()
         } else {
             String::new()
         }
     };
 
     let proxy_config = build_proxy_config_yaml(
-        &config, &config_dir, &auth_dir, &oauth_excluded_models_section
+        &config,
+        &config_dir,
+        &auth_dir,
+        &oauth_excluded_models_section,
     )?;
     std::fs::write(&proxy_config_path, proxy_config).map_err(|e| e.to_string())?;
 
@@ -651,7 +690,9 @@ pub async fn start_proxy(
         .env("WRITABLE_PATH", config_dir.to_str().unwrap())
         .args(["--config", proxy_config_path.to_str().unwrap()]);
 
-    let (mut rx, child) = sidecar.spawn().map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
+    let (mut rx, child) = sidecar
+        .spawn()
+        .map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
 
     // Store the child process
     {
@@ -667,7 +708,7 @@ pub async fn start_proxy(
     let app_handle = app.clone();
     tauri::async_runtime::spawn(async move {
         use tauri_plugin_shell::process::CommandEvent;
-        
+
         while let Some(event) = rx.recv().await {
             match event {
                 CommandEvent::Stdout(line) => {
@@ -706,7 +747,9 @@ pub async fn start_proxy(
 
         // If the process already exited, abort immediately — no point waiting
         if early_exit.load(Ordering::SeqCst) {
-            eprintln!("[ProxyPal] Proxy process exited early (port conflict or crash). Aborting start.");
+            eprintln!(
+                "[ProxyPal] Proxy process exited early (port conflict or crash). Aborting start."
+            );
             let hint = if cfg!(windows) {
                 format!(
                     " Port {} may still be in use.\n\
@@ -743,56 +786,45 @@ pub async fn start_proxy(
     // Sync settings via Management API (best-effort, don't fail proxy start)
     if ready {
         let _ = client
-            .put(&format!(
-                "http://127.0.0.1:{}/v0/management/usage-statistics-enabled",
-                port
-            ))
+                .put(format!(
+                    "http://127.0.0.1:{}/v0/management/usage-statistics-enabled",
+                    port
+                ))
             .header("X-Management-Key", &get_management_key())
             .json(&serde_json::json!({"value": config.usage_stats_enabled}))
             .send()
             .await;
 
         let _ = client
-            .put(&format!(
-                "http://127.0.0.1:{}/v0/management/max-retry-interval",
-                port
-            ))
+                .put(format!(
+                    "http://127.0.0.1:{}/v0/management/max-retry-interval",
+                    port
+                ))
             .header("X-Management-Key", &get_management_key())
             .json(&serde_json::json!({"value": config.max_retry_interval}))
             .send()
             .await;
     }
-    
+
     // Start log file watcher for request tracking
     // This replaces the old polling approach and captures ALL proxy requests
     let log_path = config_dir.join("logs").join("main.log");
     let log_watcher_running = state.log_watcher_running.clone();
     let request_counter = state.request_counter.clone();
-    
+
     // Signal any existing watcher to stop, then start new one
     log_watcher_running.store(false, Ordering::SeqCst);
     std::thread::sleep(std::time::Duration::from_millis(100)); // Give old watcher time to stop
     log_watcher_running.store(true, Ordering::SeqCst);
-    
-    let app_handle2 = app.clone();
-    start_log_watcher(app_handle2, log_path, log_watcher_running, request_counter);
-    
-    // Sync usage statistics from proxy to local history on startup (in background)
-    // This ensures analytics page shows data without requiring restart or manual refresh
-    let port = config.port;
-    tokio::spawn(async move {
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-        let client = crate::build_management_client();
-        let usage_url = format!("http://127.0.0.1:{}/v0/management/usage", port);
-        let _ = client
-            .get(&usage_url)
-            .header("X-Management-Key", &get_management_key())
-            .timeout(std::time::Duration::from_secs(5))
-            .send()
-            .await;
-    });
 
-    // Update status
+        let app_handle2 = app.clone();
+        start_log_watcher(app_handle2, log_path, log_watcher_running, request_counter);
+
+        // Start usage-queue collector
+        let usage_collector_gen = state.usage_queue_collector_gen.clone();
+        start_usage_queue_collector(usage_collector_gen, config.port);
+
+        // Update status
     let new_status = {
         let mut status = state.proxy_status.lock().unwrap();
         status.running = true;
@@ -820,8 +852,9 @@ pub async fn stop_proxy(
         }
     }
 
-    // Stop the log watcher
-    state.log_watcher_running.store(false, Ordering::SeqCst);
+        // Stop the log watcher and usage collector
+        state.log_watcher_running.store(false, Ordering::SeqCst);
+        state.usage_queue_collector_gen.fetch_add(1, Ordering::SeqCst);
 
     // Kill the tracked child process
     {
@@ -920,6 +953,24 @@ mod tests {
         assert_eq!(
             normalize_system_proxy("socks-proxy.local", 1080),
             "socks5://socks-proxy.local:1080"
+        );
+    }
+
+    #[test]
+    fn build_proxy_config_yaml_sets_safe_defaults() {
+        let config = crate::config::AppConfig::default();
+        let config_dir = std::path::PathBuf::from("/tmp/proxypal-test-safe");
+        let auth_dir = std::path::PathBuf::from("/tmp/.cli-proxy-api-test");
+        let yaml = build_proxy_config_yaml(&config, &config_dir, &auth_dir, "").unwrap();
+        assert!(
+            yaml.contains("allow-remote: false"),
+            "Expected allow-remote: false, got:\n{}",
+            yaml
+        );
+        assert!(
+            yaml.contains("host: \"127.0.0.1\""),
+            "Expected host: \"127.0.0.1\", got:\n{}",
+            yaml
         );
     }
 }
