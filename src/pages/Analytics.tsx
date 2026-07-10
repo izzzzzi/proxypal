@@ -1,6 +1,6 @@
+import { AlertDialog } from "@kobalte/core/alert-dialog";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { AlertDialog } from "@kobalte/core/alert-dialog";
 import { Chart, registerables } from "chart.js";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import {
@@ -379,7 +379,9 @@ export function Analytics() {
 
   const handleConfirmImport = async () => {
     const data = pendingImportData();
-    if (!data) return;
+    if (!data) {
+      return;
+    }
 
     try {
       setImporting(true);
@@ -758,7 +760,14 @@ export function Analytics() {
         </div>
 
         {/* Import confirmation dialog */}
-        <AlertDialog open={pendingImportData() !== null} onOpenChange={(isOpen) => { if (!isOpen) setPendingImportData(null); }}>
+        <AlertDialog
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setPendingImportData(null);
+            }
+          }}
+          open={pendingImportData() !== null}
+        >
           <AlertDialog.Portal>
             <AlertDialog.Overlay class="fixed inset-0 z-50 bg-black/40" />
             <AlertDialog.Content class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">

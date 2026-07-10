@@ -47,13 +47,13 @@ Build on every supported platform + architecture. Artifacts are produced by the
 GitHub release workflow `.github/workflows/release.yml` (triggered on tag push).
 Per-platform matrix:
 
-| Platform       | Target Arch | Runner OS             | Primary artifact                          | Also included                       |
-|----------------|-------------|-----------------------|-------------------------------------------|-------------------------------------|
-| macOS          | ARM64       | `macos-latest`        | `ProxyPal_<VERSION>_aarch64.dmg`          | `.tar.gz` variant                   |
-| macOS          | x86_64      | `macos-13`            | `ProxyPal_<VERSION>_x64.dmg`              | `.tar.gz` variant                   |
-| Windows        | x86_64      | `windows-latest`      | `ProxyPal_<VERSION>_x64.msi`              | `.msi.zip`                          |
-| Linux (deb)    | amd64       | `ubuntu-latest`       | `ProxyPal_<VERSION>_amd64.deb`            | `AppImage`, `.rpm`                  |
-| Linux (AppImage)| amd64      | `ubuntu-latest`       | `ProxyPal_<VERSION>_amd64.AppImage`       | —                                   |
+| Platform         | Target Arch | Runner OS        | Primary artifact                    | Also included      |
+| ---------------- | ----------- | ---------------- | ----------------------------------- | ------------------ |
+| macOS            | ARM64       | `macos-latest`   | `ProxyPal_<VERSION>_aarch64.dmg`    | `.tar.gz` variant  |
+| macOS            | x86_64      | `macos-13`       | `ProxyPal_<VERSION>_x64.dmg`        | `.tar.gz` variant  |
+| Windows          | x86_64      | `windows-latest` | `ProxyPal_<VERSION>_x64.msi`        | `.msi.zip`         |
+| Linux (deb)      | amd64       | `ubuntu-latest`  | `ProxyPal_<VERSION>_amd64.deb`      | `AppImage`, `.rpm` |
+| Linux (AppImage) | amd64       | `ubuntu-latest`  | `ProxyPal_<VERSION>_amd64.AppImage` | —                  |
 
 **Check:** Download all artifacts from the release draft. On each platform, clean-install
 (fresh VM / bare-metal, no prior ProxyPal):
@@ -135,6 +135,7 @@ Test every supported provider end-to-end. Excluding a provider requires a
 justified comment (e.g. "Gemini OAuth down upstream").
 
 Supported providers (source: `src/pages/AuthFiles.tsx`):
+
 - **Antigravity** — API key
 - **Claude** (Anthropic) — API key
 - **Codex** — API key (OpenAI-compatible)
@@ -146,7 +147,7 @@ Supported providers (source: `src/pages/AuthFiles.tsx`):
 - **Vertex AI** (Google Cloud) — OAuth / service-account
 
 | Provider    | Auth method        | Test action                                          |
-|-------------|--------------------|------------------------------------------------------|
+| ----------- | ------------------ | ---------------------------------------------------- |
 | Antigravity | API key            | Add key in Settings → connect -> send test prompt    |
 | Claude      | API key            | Add key in Settings → connect -> send test prompt    |
 | Codex       | API key            | Add key in Settings → connect -> send test prompt    |
@@ -218,6 +219,7 @@ Install the **current release** (v\<CURRENT-1\>), then upgrade to the candidate
 ```
 
 **Pass criteria (all must hold):**
+
 1. App launches without migration errors
 2. Previously saved API keys are still present
 3. Test prompt succeeds against at least Claude and Gemini
@@ -251,13 +253,14 @@ $ <open app, verify keys via UI>
 
 Expected rollback path for each platform:
 
-| Platform   | Rollback method                                                  |
-|------------|------------------------------------------------------------------|
-| macOS      | Download prior .dmg; `rm -rf /Applications/ProxyPal.app`; re-install |
-| Windows    | Download prior .msi; run uninstall from Add/Remove Programs; install old MSI |
-| Linux      | `sudo dpkg -r proxypal && sudo dpkg -i ./ProxyPal_<CURRENT-1>_amd64.deb` |
+| Platform | Rollback method                                                              |
+| -------- | ---------------------------------------------------------------------------- |
+| macOS    | Download prior .dmg; `rm -rf /Applications/ProxyPal.app`; re-install         |
+| Windows  | Download prior .msi; run uninstall from Add/Remove Programs; install old MSI |
+| Linux    | `sudo dpkg -r proxypal && sudo dpkg -i ./ProxyPal_<CURRENT-1>_amd64.deb`     |
 
 **Check:** After rollback:
+
 - [ ] App launches without errors
 - [ ] Prior data directory is intact (config, keys, proxy history)
 - [ ] API keys re-appear in the UI (config format backward-compatible)
@@ -301,6 +304,7 @@ codesign -d --entitlements :- /Applications/ProxyPal.app 2>&1 | grep -i 'com.app
 ```
 
 **Pass criteria:**
+
 - `codesign -dvvv` output includes `Authority=Developer ID Application: <team>` and `Sealed Resources version=2`
 - `spctl --assess -vv` prints `accepted`
 - Hardened runtime is enabled (`com.apple.security.cs.allow-*` entitlements only as needed)

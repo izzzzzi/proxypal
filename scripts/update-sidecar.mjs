@@ -175,9 +175,7 @@ async function verifyChecksum(repo, version, assetName, buffer) {
     const e = expectedHash.toLowerCase();
     if (a !== e) {
       throw new Error(
-        `SHA-256 mismatch for "${assetName}".\n` +
-          `  Expected: ${e}\n` +
-          `  Actual:   ${a}`,
+        `SHA-256 mismatch for "${assetName}".\n` + `  Expected: ${e}\n` + `  Actual:   ${a}`,
       );
     }
   }

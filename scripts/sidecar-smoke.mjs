@@ -107,17 +107,27 @@ function cleanup() {
     sidecar.kill("SIGTERM");
     // Give it a moment to shut down gracefully
     setTimeout(() => {
-      try { sidecar.kill("SIGKILL"); } catch {}
+      try {
+        sidecar.kill("SIGKILL");
+      } catch {}
     }, 2000);
   } catch {
     // Process may already be dead
   }
-  try { rmSync(tmpRoot, { recursive: true, force: true }); } catch {}
+  try {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  } catch {}
 }
 
 process.on("exit", cleanup);
-process.on("SIGINT", () => { cleanup(); process.exit(1); });
-process.on("SIGTERM", () => { cleanup(); process.exit(1); });
+process.on("SIGINT", () => {
+  cleanup();
+  process.exit(1);
+});
+process.on("SIGTERM", () => {
+  cleanup();
+  process.exit(1);
+});
 
 // ── HTTP helpers ────────────────────────────────────────────────────────────
 function fetchUrl(url, options = {}) {
@@ -125,9 +135,7 @@ function fetchUrl(url, options = {}) {
     const req = httpRequest(url, options, (res) => {
       let data = "";
       res.on("data", (chunk) => (data += chunk));
-      res.on("end", () =>
-        resolve({ status: res.statusCode, headers: res.headers, body: data }),
-      );
+      res.on("end", () => resolve({ status: res.statusCode, headers: res.headers, body: data }));
     });
     req.on("error", (err) => reject(err));
     req.end();
@@ -151,9 +159,7 @@ for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       console.log(`[smoke] Sidecar ready on port ${port} (attempt ${attempt})`);
       break;
     }
-    console.log(
-      `[smoke] Unexpected status ${resp.status} (attempt ${attempt}/${MAX_RETRIES})`,
-    );
+    console.log(`[smoke] Unexpected status ${resp.status} (attempt ${attempt}/${MAX_RETRIES})`);
   } catch {
     if (attempt < MAX_RETRIES) {
       await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
@@ -197,9 +203,7 @@ try {
     // No X-Management-Key header
   });
   if (resp.status === 401 || resp.status === 403) {
-    console.log(
-      `[smoke] PASS: GET /v0/management/config.yaml (unauthenticated) -> ${resp.status}`,
-    );
+    console.log(`[smoke] PASS: GET /v0/management/config.yaml (unauthenticated) -> ${resp.status}`);
     test2Ok = true;
   } else {
     console.error(

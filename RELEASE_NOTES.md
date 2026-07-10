@@ -1,3 +1,14 @@
+# ProxyPal v0.4.44
+
+**Released:** 2026-07-10
+
+## Build and localization fixes
+
+- Fixes the CI formatting gate for release files.
+- Completes localized confirmation text for destructive usage-history imports.
+
+---
+
 # ProxyPal v0.4.43
 
 **Released:** 2026-07-10

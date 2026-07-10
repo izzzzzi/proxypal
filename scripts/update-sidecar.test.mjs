@@ -1,13 +1,13 @@
 // Node built-in tests for update-sidecar.mjs
 // Run: node --test scripts/update-sidecar.test.mjs
 
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
 import { randomUUID } from "node:crypto";
 import { unlinkSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, it } from "node:test";
 
 // ---------------------------------------------------------------------------
 // Test the parsable-but-not-importable helpers by re-implementing exactly what
@@ -83,9 +83,13 @@ describe("parseChecksums", () => {
   });
 
   it("lowercases hex hash", () => {
-    const content = "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855  file.tar.gz\n";
+    const content =
+      "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855  file.tar.gz\n";
     const map = parseChecksums(content);
-    assert.equal(map.get("file.tar.gz"), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    assert.equal(
+      map.get("file.tar.gz"),
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    );
   });
 
   it("ignores malformed lines gracefully", () => {
