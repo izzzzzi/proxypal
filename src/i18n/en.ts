@@ -424,6 +424,9 @@ export const en = {
       modelsConfigured: "Models Configured",
       total: "total",
     },
+    chatgptPlusPromo:
+      "🔥 1-Month ChatGPT Plus — Only $1.33\n👉 Buy now: https://t.me/AI_Shop1998_bot",
+    chatgptPlusPromoCta: "Buy now",
     kiro: {
       title: "Kiro Quota",
     },

@@ -414,6 +414,9 @@ export const zhCN = {
       modelsConfigured: "已配置模型",
       total: "总计",
     },
+    chatgptPlusPromo:
+      "🔥 1 个月 ChatGPT Plus — 仅需 $1.33\n👉 立即购买：https://t.me/AI_Shop1998_bot",
+    chatgptPlusPromoCta: "立即购买",
     kiro: {
       title: "Kiro 配额",
     },
