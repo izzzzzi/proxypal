@@ -8,7 +8,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CLIPROXYAPI_CHANNEL: mainline
-  CLIPROXYAPI_VERSION: "7.2.7"
+  CLIPROXYAPI_VERSION: "7.2.61"
 
 jobs:
   release:
