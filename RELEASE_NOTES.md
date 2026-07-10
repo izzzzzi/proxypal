@@ -1,3 +1,14 @@
+# ProxyPal v0.4.45
+
+**Released:** 2026-07-10
+
+## Release automation
+
+- Allows release builds to proceed when optional Apple signing and notarization credentials are unavailable.
+- macOS artifacts produced without those credentials are unsigned and not notarized; do not represent them as trusted/notarized builds.
+
+---
+
 # ProxyPal v0.4.44
 
 **Released:** 2026-07-10
