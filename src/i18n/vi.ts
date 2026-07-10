@@ -418,7 +418,7 @@ export const vi = {
     },
     commandPalette: "Bảng lệnh (⌘K)",
     configModal: {
-      modelsConfigured: "Models đã cấu hình",
+      modelsConfigured: "Mô hình đã cấu hình",
       total: "tổng cộng",
     },
     chatgptPlusPromo:
