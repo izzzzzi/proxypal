@@ -28,29 +28,16 @@ pub async fn get_auth_files(state: State<'_, AppState>) -> Result<Vec<AuthFile>,
             Ok(response) => {
                 if response.status().is_success() {
                     if let Ok(json) = response.json::<serde_json::Value>().await {
-                        let files_array = if let Some(f) = json.get("files") {
-                            f.clone()
+                        let files_array = if let Some(files) = json.get("files") {
+                            files.clone()
                         } else if json.is_array() {
                             json
                         } else {
                             serde_json::Value::Array(Vec::new())
                         };
 
-                        // Convert snake_case to camelCase
-                        if let Ok(json_str) = serde_json::to_string(&files_array) {
-                            let converted = json_str
-                                .replace("\"status_message\"", "\"statusMessage\"")
-                                .replace("\"runtime_only\"", "\"runtimeOnly\"")
-                                .replace("\"account_type\"", "\"accountType\"")
-                                .replace("\"created_at\"", "\"createdAt\"")
-                                .replace("\"updated_at\"", "\"updatedAt\"")
-                                .replace("\"last_refresh\"", "\"lastRefresh\"")
-                                .replace("\"success_count\"", "\"successCount\"")
-                                .replace("\"failure_count\"", "\"failureCount\"");
-
-                            if let Ok(parsed) = serde_json::from_str::<Vec<AuthFile>>(&converted) {
-                                files = parsed;
-                            }
+                        if let Ok(parsed) = serde_json::from_value::<Vec<AuthFile>>(files_array) {
+                            files = parsed;
                         }
                     }
                 }

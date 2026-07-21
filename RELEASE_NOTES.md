@@ -1,3 +1,19 @@
+# ProxyPal v0.4.47
+
+**Release status:** Pending publication
+
+## CLIProxyAPI v7.2.93
+
+- Updates the pinned CLIProxyAPI sidecar from v7.2.61 to v7.2.93 across local development, CI, and release builds.
+- Verifies the macOS ARM sidecar download against its upstream SHA-256 checksum and exercises the authenticated management API smoke test.
+- Replaces Auth Files JSON string rewriting with typed decoding that accepts both camelCase and CLIProxyAPI snake_case fields.
+
+## Deferred upstream interfaces
+
+- CLIProxyAPI v7.2.93 does not expose model display names, cache-write tokens, service tiers, or active WebSocket sessions through a stable management API. ProxyPal retains its local model-name heuristic and existing usage analytics until those interfaces are available.
+
+---
+
 # ProxyPal v0.4.46
 
 **Released:** 2026-07-10
