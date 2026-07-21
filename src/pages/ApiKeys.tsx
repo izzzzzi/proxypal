@@ -5,12 +5,13 @@ import {
   GeminiKeysTab,
   OpenAICompatibleTab,
   VertexKeysTab,
+  XaiKeysTab,
 } from "../components/api-keys";
 import { Button } from "../components/ui";
 import { useI18n } from "../i18n";
 import { appStore } from "../stores/app";
 
-type TabId = "gemini" | "claude" | "codex" | "openai-compatible" | "vertex";
+type TabId = "gemini" | "claude" | "codex" | "xai" | "openai-compatible" | "vertex";
 
 interface Tab {
   icon: string;
@@ -22,6 +23,7 @@ const TABS: Tab[] = [
   { icon: "/logos/gemini.svg", id: "gemini", label: "Gemini" },
   { icon: "/logos/claude.svg", id: "claude", label: "Claude" },
   { icon: "/logos/openai.svg", id: "codex", label: "Codex" },
+  { icon: "/logos/openai.svg", id: "xai", label: "xAI" },
   { icon: "/logos/openai.svg", id: "openai-compatible", label: "OpenAI" },
   { icon: "/logos/vertex.svg", id: "vertex", label: "Vertex" },
 ];
@@ -149,6 +151,15 @@ export function ApiKeysPage() {
 
           <Show when={activeTab() === "codex"}>
             <CodexKeysTab
+              loading={loading}
+              setLoading={setLoading}
+              setShowAddForm={setShowAddForm}
+              showAddForm={showAddForm}
+            />
+          </Show>
+
+          <Show when={activeTab() === "xai"}>
+            <XaiKeysTab
               loading={loading}
               setLoading={setLoading}
               setShowAddForm={setShowAddForm}

@@ -36,6 +36,31 @@ export interface CodexApiKey {
   proxyUrl?: string;
 }
 
+export interface XaiApiKey {
+  apiKey: string;
+  baseUrl: string;
+  headers?: Record<string, string>;
+  prefix?: string;
+  proxyUrl?: string;
+  websockets?: boolean;
+}
+
+export async function getXaiApiKeys(): Promise<XaiApiKey[]> {
+  return invoke("get_xai_api_keys");
+}
+
+export async function setXaiApiKeys(keys: XaiApiKey[]): Promise<void> {
+  return invoke("set_xai_api_keys", { keys });
+}
+
+export async function addXaiApiKey(key: XaiApiKey): Promise<void> {
+  return invoke("add_xai_api_key", { key });
+}
+
+export async function deleteXaiApiKey(index: number): Promise<void> {
+  return invoke("delete_xai_api_key", { index });
+}
+
 // OpenAI-Compatible Provider structure
 export interface OpenAICompatibleProvider {
   apiKeyEntries: Array<{

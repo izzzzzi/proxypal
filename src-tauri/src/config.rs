@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::types::{
     amp::generate_uuid, cloudflare::CloudflareConfig, AmpModelMapping, AmpOpenAIProvider,
-    ClaudeApiKey, CodexApiKey, CopilotConfig, GeminiApiKey, SshConfig, VertexApiKey,
+    ClaudeApiKey, CodexApiKey, CopilotConfig, GeminiApiKey, SshConfig, VertexApiKey, XaiApiKey,
 };
 
 /// App configuration persisted to config.json
@@ -61,6 +61,8 @@ pub struct AppConfig {
     pub gemini_api_keys: Vec<GeminiApiKey>,
     #[serde(default)]
     pub codex_api_keys: Vec<CodexApiKey>,
+    #[serde(default)]
+    pub xai_api_keys: Vec<XaiApiKey>,
     #[serde(default)]
     pub vertex_api_keys: Vec<VertexApiKey>,
     #[serde(default)]
@@ -173,6 +175,7 @@ impl Default for AppConfig {
             claude_api_keys: Vec::new(),
             gemini_api_keys: Vec::new(),
             codex_api_keys: Vec::new(),
+            xai_api_keys: Vec::new(),
             vertex_api_keys: Vec::new(),
             thinking_budget_mode: "medium".to_string(),
             thinking_budget_custom: 16000,

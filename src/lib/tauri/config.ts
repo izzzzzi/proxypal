@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import type { XaiApiKey } from "./api-keys";
 import type { CloudflareConfig } from "./cloudflare";
 import type { AmpOpenAIProvider, CopilotConfig } from "./models";
 import type { SshConfig } from "./ssh";
@@ -46,6 +47,7 @@ export interface AppConfig {
   usageStatsEnabled: boolean;
   useSystemProxy?: boolean;
   wsAuth?: boolean;
+  xaiApiKeys?: XaiApiKey[];
 }
 
 export async function getConfig(): Promise<AppConfig> {

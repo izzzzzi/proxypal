@@ -8,6 +8,11 @@
 - Verifies the macOS ARM sidecar download against its upstream SHA-256 checksum and exercises the authenticated management API smoke test.
 - Replaces Auth Files JSON string rewriting with typed decoding that accepts both camelCase and CLIProxyAPI snake_case fields.
 
+## GPT-5.6 and xAI
+
+- Adds GPT-5.6 Terra, Luna, and Sol model aliases, including their GPT-5.6-only `max` and `ultra` reasoning variants.
+- Adds native xAI API-key management for Grok: configure a key, endpoint, and optional prefix in the API Keys page; configuration persists across proxy restarts.
+
 ## Deferred upstream interfaces
 
 - CLIProxyAPI v7.2.93 does not expose model display names, cache-write tokens, service tiers, or active WebSocket sessions through a stable management API. ProxyPal retains its local model-name heuristic and existing usage analytics until those interfaces are available.

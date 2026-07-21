@@ -4,6 +4,7 @@ use crate::config::save_config_to_file;
 use crate::state::AppState;
 use crate::types::{
     ClaudeApiKey, CodexApiKey, GeminiApiKey, ModelMapping, OpenAICompatibleProvider, VertexApiKey,
+    XaiApiKey,
 };
 use tauri::State;
 
@@ -348,6 +349,86 @@ pub async fn delete_codex_api_key(state: State<'_, AppState>, index: usize) -> R
     }
     keys.remove(index);
     set_codex_api_keys(state, keys).await
+}
+
+// ============================================
+// xAI API Keys
+// ============================================
+
+#[tauri::command]
+pub async fn get_xai_api_keys(state: State<'_, AppState>) -> Result<Vec<XaiApiKey>, String> {
+    let port = state.config.lock().unwrap().port;
+    let url = crate::get_management_url(port, "xai-api-key");
+
+    let client = crate::build_management_client();
+    let response = client
+        .get(&url)
+        .header("X-Management-Key", &crate::get_management_key())
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch xAI API keys: {}", e))?;
+
+    if !response.status().is_success() {
+        return Ok(Vec::new());
+    }
+
+    let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+    convert_api_key_response(json, "xai-api-key")
+}
+
+#[tauri::command]
+pub async fn set_xai_api_keys(
+    state: State<'_, AppState>,
+    keys: Vec<XaiApiKey>,
+) -> Result<(), String> {
+    if keys
+        .iter()
+        .any(|key| key.api_key.trim().is_empty() || key.base_url.trim().is_empty())
+    {
+        return Err("xAI API key and base URL are required".to_string());
+    }
+
+    let port = state.config.lock().unwrap().port;
+    let url = crate::get_management_url(port, "xai-api-key");
+    let client = crate::build_management_client();
+    let body = convert_to_management_format(&keys)?;
+
+    let response = client
+        .put(&url)
+        .header("X-Management-Key", &crate::get_management_key())
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to set xAI API keys: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(format!("Failed to set xAI API keys: {} - {}", status, text));
+    }
+
+    let mut config = state.config.lock().unwrap();
+    config.xai_api_keys = keys;
+    save_config_to_file(&config)?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn add_xai_api_key(state: State<'_, AppState>, key: XaiApiKey) -> Result<(), String> {
+    let mut keys = get_xai_api_keys(state.clone()).await?;
+    keys.push(key);
+    set_xai_api_keys(state, keys).await
+}
+
+#[tauri::command]
+pub async fn delete_xai_api_key(state: State<'_, AppState>, index: usize) -> Result<(), String> {
+    let mut keys = get_xai_api_keys(state.clone()).await?;
+    if index >= keys.len() {
+        return Err("Index out of bounds".to_string());
+    }
+    keys.remove(index);
+    set_xai_api_keys(state, keys).await
 }
 
 // ============================================

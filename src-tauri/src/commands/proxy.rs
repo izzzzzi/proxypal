@@ -73,6 +73,7 @@ fn build_proxy_config_yaml(
     let claude_api_key_section = build_claude_api_key_section(config);
     let gemini_api_key_section = build_gemini_api_key_section(config);
     let codex_api_key_section = build_codex_api_key_section(config);
+    let xai_api_key_section = build_xai_api_key_section(config);
     let vertex_api_key_section = build_vertex_api_key_section(config);
     let (thinking_budget, thinking_mode_display) = resolve_thinking_budget(config);
     let payload_section = build_payload_section(config, thinking_budget, thinking_mode_display);
@@ -106,7 +107,7 @@ remote-management:
   secret-key: "{}"
   disable-control-panel: {}
 
-{}{}{}{}{}{}{}# Additional settings
+{}{}{}{}{}{}{}{}# Additional settings
 request-log: {}
 commercial-mode: {}
 ws-auth: {}
@@ -131,6 +132,7 @@ ws-auth: {}
         claude_api_key_section,
         gemini_api_key_section,
         codex_api_key_section,
+        xai_api_key_section,
         vertex_api_key_section,
         routing_section,
         payload_section,
@@ -342,6 +344,41 @@ fn build_codex_api_key_section(config: &AppConfig) -> String {
             if !proxy_url.is_empty() {
                 section.push_str(&format!("    proxy-url: \"{}\"\n", proxy_url));
             }
+        }
+    }
+    section.push('\n');
+    section
+}
+
+fn build_xai_api_key_section(config: &AppConfig) -> String {
+    if config.xai_api_keys.is_empty() {
+        return String::new();
+    }
+
+    let mut section = String::from("# xAI API keys\nxai-api-key:\n");
+    for key in &config.xai_api_keys {
+        section.push_str(&format!("  - api-key: \"{}\"\n", key.api_key));
+        section.push_str(&format!("    base-url: \"{}\"\n", key.base_url));
+        if let Some(ref proxy_url) = key.proxy_url {
+            if !proxy_url.is_empty() {
+                section.push_str(&format!("    proxy-url: \"{}\"\n", proxy_url));
+            }
+        }
+        if let Some(ref prefix) = key.prefix {
+            if !prefix.is_empty() {
+                section.push_str(&format!("    prefix: \"{}\"\n", prefix));
+            }
+        }
+        if let Some(ref headers) = key.headers {
+            if !headers.is_empty() {
+                section.push_str("    headers:\n");
+                for (name, value) in headers {
+                    section.push_str(&format!("      {}: \"{}\"\n", name, value));
+                }
+            }
+        }
+        if let Some(websockets) = key.websockets {
+            section.push_str(&format!("    websockets: {}\n", websockets));
         }
     }
     section.push('\n');
@@ -973,6 +1010,25 @@ mod tests {
             "Expected host: \"127.0.0.1\", got:\n{}",
             yaml
         );
+    }
+
+    #[test]
+    fn build_proxy_config_yaml_includes_xai_api_key_entries() {
+        let mut config = crate::config::AppConfig::default();
+        config.xai_api_keys.push(crate::types::XaiApiKey {
+            api_key: "xai-test-key".to_string(),
+            base_url: "https://api.x.ai/v1".to_string(),
+            prefix: Some("xai".to_string()),
+            ..Default::default()
+        });
+        let config_dir = std::path::PathBuf::from("/tmp/proxypal-test-xai");
+        let auth_dir = std::path::PathBuf::from("/tmp/.cli-proxy-api-test");
+        let yaml = build_proxy_config_yaml(&config, &config_dir, &auth_dir, "").unwrap();
+
+        assert!(yaml.contains("# xAI API keys\nxai-api-key:"));
+        assert!(yaml.contains("api-key: \"xai-test-key\""));
+        assert!(yaml.contains("base-url: \"https://api.x.ai/v1\""));
+        assert!(yaml.contains("prefix: \"xai\""));
     }
 
     #[test]

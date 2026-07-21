@@ -3,3 +3,4 @@ export { CodexKeysTab } from "./CodexKeysTab";
 export { GeminiKeysTab } from "./GeminiKeysTab";
 export { OpenAICompatibleTab } from "./OpenAICompatibleTab";
 export { VertexKeysTab } from "./VertexKeysTab";
+export { XaiKeysTab } from "./XaiKeysTab";
