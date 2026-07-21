@@ -56,10 +56,25 @@ pub(crate) const GPT5_BASE_MODELS: &[&str] = &[
     "gpt-5.4-nano",
     "gpt-5.5",
     "gpt-5.5-fast",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.6-sol",
 ];
 
-// GPT-5 reasoning level suffixes
+// GPT-5 reasoning level suffixes supported by all configured GPT-5 aliases.
 pub(crate) const GPT5_REASONING_SUFFIXES: &[&str] = &["minimal", "low", "medium", "high", "xhigh"];
+
+// CLIProxyAPI exposes max and ultra reasoning only for GPT-5.6 variants.
+pub(crate) const GPT56_REASONING_SUFFIXES: &[&str] =
+    &["minimal", "low", "medium", "high", "xhigh", "max", "ultra"];
+
+pub(crate) fn gpt5_reasoning_suffixes(model: &str) -> &'static [&'static str] {
+    if model.starts_with("gpt-5.6-") {
+        GPT56_REASONING_SUFFIXES
+    } else {
+        GPT5_REASONING_SUFFIXES
+    }
+}
 
 // Load auth status from file
 pub(crate) fn load_auth_status() -> AuthStatus {

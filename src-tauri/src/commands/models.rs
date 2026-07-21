@@ -532,6 +532,12 @@ pub(crate) fn get_model_limits(model_id: &str, owned_by: &str, source: &str) -> 
                 } else {
                     return (400000, 32768);
                 }
+            } else if model_lower.contains("5.6-terra")
+                || model_lower.contains("5.6-luna")
+                || model_lower.contains("5.6-sol")
+            {
+                // CLIProxyAPI's GPT-5.6 variants expose a 372K context and 128K output.
+                return (372000, 128000);
             } else if model_lower.contains("5.4") || model_lower.contains("5.5") {
                 // GPT-5.4/5.5 full and fast aliases: 400K context, 128K output
                 if source == "copilot" {
@@ -687,4 +693,20 @@ pub async fn set_claude_code_model(model_type: String, model_name: String) -> Re
     std::fs::write(&config_path, config_str).map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::get_model_limits;
+
+    #[test]
+    fn gpt_5_6_models_use_sidecar_limits() {
+        for model in ["gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.6-sol"] {
+            assert_eq!(
+                get_model_limits(model, "openai", "oauth"),
+                (372_000, 128_000),
+                "unexpected limits for {model}"
+            );
+        }
+    }
 }

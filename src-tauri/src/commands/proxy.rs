@@ -8,8 +8,7 @@ use crate::get_management_key;
 use crate::helpers::log_watcher::start_log_watcher;
 use crate::state::AppState;
 use crate::types::ProxyStatus;
-use crate::GPT5_BASE_MODELS;
-use crate::GPT5_REASONING_SUFFIXES;
+use crate::{gpt5_reasoning_suffixes, GPT5_BASE_MODELS};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -245,7 +244,7 @@ fn build_copilot_openai_entry(copilot: &crate::types::copilot::CopilotConfig) ->
     for model in GPT5_BASE_MODELS {
         entry.push_str(&format!("      - alias: \"{}\"\n", model));
         entry.push_str(&format!("        name: \"{}\"\n", model));
-        for suffix in GPT5_REASONING_SUFFIXES {
+        for suffix in gpt5_reasoning_suffixes(model) {
             let suffixed = format!("{}({})", model, suffix);
             entry.push_str(&format!("      - alias: \"{}\"\n", suffixed));
             entry.push_str(&format!("        name: \"{}\"\n", suffixed));
@@ -973,6 +972,28 @@ mod tests {
             yaml.contains("host: \"127.0.0.1\""),
             "Expected host: \"127.0.0.1\", got:\n{}",
             yaml
+        );
+    }
+
+    #[test]
+    fn copilot_config_includes_gpt_5_6_specific_reasoning_aliases() {
+        let yaml = build_copilot_openai_entry(&crate::types::copilot::CopilotConfig::default());
+
+        for alias in [
+            "gpt-5.6-terra",
+            "gpt-5.6-terra(max)",
+            "gpt-5.6-terra(ultra)",
+            "gpt-5.6-luna(max)",
+            "gpt-5.6-sol(ultra)",
+        ] {
+            assert!(
+                yaml.contains(&format!("alias: \"{}\"", alias)),
+                "missing {alias}"
+            );
+        }
+        assert!(
+            !yaml.contains("gpt-5.5(max)"),
+            "GPT-5.6-only effort levels must not be mapped for older GPT-5 models"
         );
     }
 }
